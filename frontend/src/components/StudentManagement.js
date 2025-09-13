@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { 
   Plus, 
   Search, 
@@ -18,8 +18,6 @@ import {
 import Webcam from 'react-webcam';
 import { toast } from 'sonner';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const StudentManagement = ({ user }) => {
   const [students, setStudents] = useState([]);
@@ -48,7 +46,7 @@ const StudentManagement = ({ user }) => {
       if (selectedClass) params.append('class_name', selectedClass);
       if (selectedSection) params.append('section', selectedSection);
       
-      const response = await axios.get(`${API}/students?${params}`);
+      const response = await api.get(`/students?${params}`);
       setStudents(response.data);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -60,7 +58,7 @@ const StudentManagement = ({ user }) => {
 
   const fetchClasses = async () => {
     try {
-      const response = await axios.get(`${API}/classes`);
+      const response = await api.get('/classes');
       setClasses(response.data);
     } catch (error) {
       console.error('Error fetching classes:', error);
@@ -83,7 +81,7 @@ const StudentManagement = ({ user }) => {
         formData.append('photo', blob, 'student_photo.jpg');
       }
 
-      await axios.post(`${API}/students`, formData, {
+      await api.post('/students', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

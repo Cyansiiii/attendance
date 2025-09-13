@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { 
   Users, 
   UserCheck, 
@@ -15,8 +15,6 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const Dashboard = ({ user }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -30,7 +28,7 @@ const Dashboard = ({ user }) => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/analytics/dashboard`);
+      const response = await api.get('/analytics/dashboard');
       setDashboardData(response.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

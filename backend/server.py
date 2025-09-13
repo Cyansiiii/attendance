@@ -5,7 +5,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+# from emergentintegrations.llm.chat import LlmChat, UserMessage
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    EMERGENT_AVAILABLE = True
+except ImportError:
+    print("Warning: emergentintegrations not available. AI insights will be disabled.")
+    EMERGENT_AVAILABLE = False
+    LlmChat = None
+    UserMessage = None
 import os
 import logging
 import uuid
@@ -182,6 +190,9 @@ def process_student_photo(image_data: bytes) -> Dict[str, Any]:
 # AI Analytics helper
 async def generate_ai_insights(data: Dict[str, Any]) -> str:
     """Generate AI-powered insights using Emergent LLM"""
+    if not EMERGENT_AVAILABLE:
+        return "AI insights are currently unavailable. The emergentintegrations package is not installed."
+    
     try:
         chat = LlmChat(
             api_key=os.environ.get('EMERGENT_LLM_KEY'),
