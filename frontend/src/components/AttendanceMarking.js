@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { 
   Calendar,
   Users,
@@ -23,8 +23,6 @@ import {
 import Webcam from 'react-webcam';
 import { toast } from 'sonner';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const AttendanceMarking = ({ user }) => {
   const [students, setStudents] = useState([]);
@@ -58,7 +56,7 @@ const AttendanceMarking = ({ user }) => {
 
   const fetchClasses = async () => {
     try {
-      const response = await axios.get(`${API}/classes`);
+      const response = await api.get('/classes');
       setClasses(response.data);
       
       // Auto-select first class if available
@@ -80,7 +78,7 @@ const AttendanceMarking = ({ user }) => {
       if (selectedClass) params.append('class_name', selectedClass);
       if (selectedSection) params.append('section', selectedSection);
       
-      const response = await axios.get(`${API}/students?${params}`);
+      const response = await api.get(`/students?${params}`);
       setStudents(response.data);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -97,7 +95,7 @@ const AttendanceMarking = ({ user }) => {
       if (selectedClass) params.append('class_name', selectedClass);
       if (selectedSection) params.append('section', selectedSection);
       
-      const response = await axios.get(`${API}/attendance?${params}`);
+      const response = await api.get(`/attendance?${params}`);
       
       // Convert attendance array to object for easy lookup
       const attendanceMap = {};
@@ -168,7 +166,7 @@ const AttendanceMarking = ({ user }) => {
       Object.entries(statusGroups).forEach(([status, studentIds]) => {
         if (studentIds.length > 0) {
           requests.push(
-            axios.post(`${API}/attendance/mark`, {
+            api.post('/attendance/mark', {
               student_ids: studentIds,
               date: selectedDate,
               status: status,

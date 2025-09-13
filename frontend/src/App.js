@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import api from './utils/api';
 import './App.css';
 
 // Components
@@ -56,25 +57,25 @@ function App() {
           setSessionProcessing(false);
         }
       } else {
-        // Check if user is already logged in via cookie
-        const sessionToken = getCookie('session_token');
-        if (sessionToken) {
-          try {
-            // Verify session is still valid by making a simple authenticated request
-            const response = await axios.get(`${API}/analytics/dashboard`);
-            if (response.data) {
-              // Session is valid, set user data from cookie or make another call
-              setUser({ 
-                name: 'User', 
-                email: 'user@example.com', 
-                role: response.data.user_role || 'teacher' 
-              });
+          // Check if user is already logged in via cookie
+          const sessionToken = getCookie('session_token');
+          if (sessionToken) {
+            try {
+              // Verify session is still valid by making a simple authenticated request
+              const response = await api.get('/analytics/dashboard');
+              if (response.data) {
+                // Session is valid, set user data from cookie or make another call
+                setUser({ 
+                  name: 'User', 
+                  email: 'user@example.com', 
+                  role: response.data.user_role || 'teacher' 
+                });
+              }
+            } catch (error) {
+              // Session is invalid, clear cookie
+              document.cookie = 'session_token=; path=/; secure; samesite=none; max-age=0';
             }
-          } catch (error) {
-            // Session is invalid, clear cookie
-            document.cookie = 'session_token=; path=/; secure; samesite=none; max-age=0';
           }
-        }
       }
       
       setLoading(false);
@@ -97,7 +98,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`);
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

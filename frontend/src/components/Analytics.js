@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { 
   TrendingUp, 
   Users, 
@@ -35,8 +35,6 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const Analytics = ({ user }) => {
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -69,7 +67,7 @@ const Analytics = ({ user }) => {
         requestData.class_filter = selectedClass;
       }
       
-      const response = await axios.post(`${API}/analytics/insights`, requestData);
+      const response = await api.post('/analytics/insights', requestData);
       setAnalyticsData(response.data.analytics);
       setAiInsights(response.data.ai_insights);
       
