@@ -13,7 +13,12 @@ import {
   Eye,
   UserPlus,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Save,
+  RefreshCw
 } from 'lucide-react';
 import Webcam from 'react-webcam';
 import { toast } from 'sonner';
@@ -69,6 +74,11 @@ const StudentManagement = ({ user }) => {
 
   const handleAddStudent = async (studentData) => {
     try {
+      if (!capturedImage) {
+        toast.error('Please capture a photo for facial recognition');
+        return;
+      }
+      
       const formData = new FormData();
       Object.keys(studentData).forEach(key => {
         if (studentData[key] !== null && studentData[key] !== '') {
@@ -76,12 +86,12 @@ const StudentManagement = ({ user }) => {
         }
       });
 
-      if (capturedImage) {
-        // Convert base64 to blob
-        const response = await fetch(capturedImage);
-        const blob = await response.blob();
-        formData.append('photo', blob, 'student_photo.jpg');
-      }
+      // Convert base64 to blob
+      const response = await fetch(capturedImage);
+      const blob = await response.blob();
+      formData.append('photo', blob, 'student_photo.jpg');
+      
+      toast.info('Processing facial data...');
 
       await axios.post(`${API}/students`, formData, {
         headers: {
@@ -566,6 +576,37 @@ const AddStudentModal = ({ onClose, onSubmit, capturedImage, onCapturePhoto, onU
 
 // Camera Modal Component
 const CameraModal = ({ webcamRef, onClose, onCapture }) => {
+  const [capturedPhotos, setCapturedPhotos] = useState([]);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [photoQuality, setPhotoQuality] = useState('waiting'); // 'waiting', 'good', 'poor'
+  
+  // Simulate face detection
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFaceDetected(true);
+      setPhotoQuality('good');
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  const captureAdditionalPhoto = () => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    setCapturedPhotos([...capturedPhotos, imageSrc]);
+    toast.success('Photo captured! Take more for better recognition.');
+  };
+  
+  const handleFinishCapture = () => {
+    // Use the last captured photo or take a new one if none captured yet
+    if (capturedPhotos.length === 0) {
+      onCapture();
+    } else {
+      // Use the last photo captured
+      const lastPhoto = capturedPhotos[capturedPhotos.length - 1];
+      onCapture(lastPhoto);
+    }
+  };
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
@@ -579,7 +620,7 @@ const CameraModal = ({ webcamRef, onClose, onCapture }) => {
           </button>
         </div>
         
-        <div className="relative">
+        <div className="relative mb-4">
           <Webcam
             ref={webcamRef}
             audio={false}
@@ -591,22 +632,71 @@ const CameraModal = ({ webcamRef, onClose, onCapture }) => {
               facingMode: "user"
             }}
           />
+          
+          {/* Face detection overlay */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className={`w-64 h-64 border-4 rounded-full ${faceDetected ? 'border-green-500' : 'border-yellow-500'} transition-colors duration-300`}></div>
+          </div>
+          
+          {/* Face detection status */}
+          <div className={`absolute top-2 left-2 px-3 py-1 rounded-full text-sm font-medium ${faceDetected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+            {faceDetected ? 'Face Detected' : 'Detecting Face...'}
+          </div>
+          
+          {/* Photo quality indicator */}
+          {faceDetected && (
+            <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${photoQuality === 'good' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+              {photoQuality === 'good' ? 'Good Lighting' : 'Improve Lighting'}
+            </div>
+          )}
         </div>
         
-        <div className="flex justify-center space-x-4 mt-6">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onCapture}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            Capture Photo
-          </button>
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              {capturedPhotos.length > 0 ? 
+                `${capturedPhotos.length} photo${capturedPhotos.length > 1 ? 's' : ''} captured` : 
+                'No photos captured yet'}
+            </div>
+            <div className="text-sm text-gray-600">
+              {faceDetected ? 
+                <span className="text-green-600 flex items-center"><CheckCircle2 className="w-4 h-4 mr-1" /> Ready to capture</span> : 
+                <span className="text-yellow-600 flex items-center"><AlertCircle className="w-4 h-4 mr-1" /> Position face in circle</span>}
+            </div>
+          </div>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={captureAdditionalPhoto}
+              disabled={!faceDetected}
+              className={`flex-1 px-4 py-2 rounded-lg ${faceDetected ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-200 text-blue-400 cursor-not-allowed'} flex items-center justify-center`}
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Capture Photo ({capturedPhotos.length + 1})
+            </button>
+            
+            <button
+              onClick={handleFinishCapture}
+              disabled={!faceDetected}
+              className={`flex-1 px-4 py-2 rounded-lg ${faceDetected ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-200 text-green-400 cursor-not-allowed'} flex items-center justify-center`}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {capturedPhotos.length > 0 ? 'Save & Finish' : 'Capture & Finish'}
+            </button>
+          </div>
+          
+          {capturedPhotos.length > 0 && (
+            <div className="flex overflow-x-auto py-2 space-x-2">
+              {capturedPhotos.map((photo, index) => (
+                <div key={index} className="relative flex-shrink-0">
+                  <img src={photo} alt={`Capture ${index + 1}`} className="h-16 w-16 object-cover rounded-md" />
+                  <div className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    {index + 1}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

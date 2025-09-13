@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import StudentManagement from './components/StudentManagement';
 import AttendanceMarking from './components/AttendanceMarking';
 import Analytics from './components/Analytics';
+import Reports from './components/Reports';
 import Header from './components/Header';
 import { Toaster } from './components/ui/sonner';
 
@@ -145,6 +146,10 @@ function App() {
           <Route 
             path="/analytics" 
             element={user ? <Analytics user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/reports" 
+            element={user ? <Reports user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/" 

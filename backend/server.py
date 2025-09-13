@@ -106,6 +106,25 @@ class AnalyticsRequest(BaseModel):
     date_range: Optional[Dict[str, str]] = None
     class_filter: Optional[str] = None
 
+class AttendanceReportRequest(BaseModel):
+    school_id: Optional[str] = None
+    class_name: Optional[str] = None
+    section: Optional[str] = None
+    start_date: Optional[str] = None  # YYYY-MM-DD
+    end_date: Optional[str] = None    # YYYY-MM-DD
+
+class AttendanceReportRecord(BaseModel):
+    student_id: str
+    student_name: str
+    roll_number: str
+    class_name: str
+    section: str
+    date: str
+    status: str
+    marked_by: str
+    method: str
+    confidence_score: Optional[float] = None
+
 class SessionResponse(BaseModel):
     id: str
     email: str
@@ -425,6 +444,49 @@ async def get_attendance(
             record["student_name"] = student["name"]
             record["roll_number"] = student["roll_number"]
         enriched_records.append(record)
+    
+    return enriched_records
+
+@api_router.post("/reports/attendance", response_model=List[AttendanceReportRecord])
+async def generate_attendance_report(
+    request: AttendanceReportRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate detailed attendance report based on filters"""
+    
+    query = {"school_id": current_user.school_id or "default_school"}
+    
+    if request.class_name:
+        query["class_name"] = request.class_name
+    if request.section:
+        query["section"] = request.section
+    
+    if request.start_date and request.end_date:
+        query["date"] = {"$gte": request.start_date, "$lte": request.end_date}
+    elif request.start_date:
+        query["date"] = {"$gte": request.start_date}
+    elif request.end_date:
+        query["date"] = {"$lte": request.end_date}
+
+    attendance_records = await db.attendance.find(query).to_list(10000)
+    
+    # Enrich with student data
+    enriched_records = []
+    for record in attendance_records:
+        student = await db.students.find_one({"id": record["student_id"]})
+        if student:
+            enriched_records.append(AttendanceReportRecord(
+                student_id=record["student_id"],
+                student_name=student["name"],
+                roll_number=student["roll_number"],
+                class_name=record["class_name"],
+                section=record["section"],
+                date=record["date"],
+                status=record["status"],
+                marked_by=record["marked_by"],
+                method=record["method"],
+                confidence_score=record.get("confidence_score")
+            ))
     
     return enriched_records
 

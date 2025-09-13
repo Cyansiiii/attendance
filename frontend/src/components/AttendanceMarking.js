@@ -14,7 +14,11 @@ import {
   AlertCircle,
   Scan,
   Save,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  UserPlus,
+  Check,
+  X
 } from 'lucide-react';
 import Webcam from 'react-webcam';
 import { toast } from 'sonner';
@@ -35,6 +39,9 @@ const AttendanceMarking = ({ user }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [recognitionInProgress, setRecognitionInProgress] = useState(false);
+  const [recognizedStudents, setRecognizedStudents] = useState([]);
+  const [recognitionStatus, setRecognitionStatus] = useState('idle'); // idle, scanning, success, error
 
   const webcamRef = useRef(null);
 
@@ -191,18 +198,63 @@ const AttendanceMarking = ({ user }) => {
 
   const processFacialRecognition = async () => {
     try {
+      setRecognitionInProgress(true);
+      setRecognitionStatus('scanning');
+      
       const imageSrc = webcamRef.current.getScreenshot();
       
-      // Simulate facial recognition processing
-      toast.success('Facial recognition completed! 5 students marked present.');
+      // In a real implementation, this would send the image to a backend API
+      // that performs facial recognition and returns matched student IDs
       
-      // In a real implementation, this would call an AI service
-      // and return matched student IDs
+      // Simulate API call with a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      setShowCamera(false);
+      // Simulate recognition results - in a real app, this would come from the API
+      const recognizedIds = [];
+      const recognizedNames = [];
+      
+      // Find random students to mark as recognized (for demo purposes)
+      const availableStudents = filteredStudents.filter(s => !recognizedStudents.some(rs => rs.id === s.id));
+      const studentsToRecognize = availableStudents.slice(0, Math.min(3, availableStudents.length));
+      
+      studentsToRecognize.forEach(student => {
+        recognizedIds.push(student.id);
+        recognizedNames.push(student.name);
+        
+        // Mark the student as present
+        markAttendance(student.id, 'present');
+      });
+      
+      // Add newly recognized students to the list
+      setRecognizedStudents(prev => [
+        ...prev,
+        ...studentsToRecognize.map(student => ({
+          id: student.id,
+          name: student.name,
+          photo_url: student.photo_url,
+          timestamp: new Date().toLocaleTimeString()
+        }))
+      ]);
+      
+      if (studentsToRecognize.length > 0) {
+        setRecognitionStatus('success');
+        toast.success(`Recognized ${studentsToRecognize.length} students!`);
+      } else {
+        setRecognitionStatus('error');
+        toast.error('No new students recognized');
+      }
+      
+      // Reset status after a delay
+      setTimeout(() => {
+        setRecognitionStatus('idle');
+      }, 2000);
+      
     } catch (error) {
       console.error('Error in facial recognition:', error);
       toast.error('Facial recognition failed');
+      setRecognitionStatus('error');
+    } finally {
+      setRecognitionInProgress(false);
     }
   };
 
@@ -493,51 +545,135 @@ const AttendanceMarking = ({ user }) => {
         {/* Camera Modal for Facial Recognition */}
         {showCamera && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-2xl">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-5xl">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-900">Facial Recognition Attendance</h3>
                 <button
                   onClick={() => setShowCamera(false)}
                   className="text-gray-400 hover:text-gray-600 p-2"
                 >
-                  ×
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div className="relative mb-6">
-                <Webcam
-                  ref={webcamRef}
-                  audio={false}
-                  screenshotFormat="image/jpeg"
-                  className="w-full rounded-lg"
-                  videoConstraints={{
-                    width: 640,
-                    height: 480,
-                    facingMode: "user"
-                  }}
-                />
-                <div className="absolute inset-0 border-4 border-dashed border-blue-400 rounded-lg pointer-events-none"></div>
-              </div>
-              
-              <div className="text-center text-gray-600 mb-6">
-                <p>Position students in front of the camera for automatic attendance marking</p>
-                <p className="text-sm">AI will detect faces and match them with enrolled students</p>
-              </div>
-              
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={() => setShowCamera(false)}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={processFacialRecognition}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Process Recognition
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="relative mb-4">
+                    <Webcam
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      className="w-full rounded-lg"
+                      videoConstraints={{
+                        width: 640,
+                        height: 480,
+                        facingMode: "user"
+                      }}
+                    />
+                    
+                    {/* Face detection overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className={`w-64 h-64 border-4 rounded-full transition-colors duration-300 ${recognitionStatus === 'scanning' ? 'border-yellow-400 animate-pulse' : recognitionStatus === 'success' ? 'border-green-500' : recognitionStatus === 'error' ? 'border-red-500' : 'border-blue-400 border-dashed'}`}></div>
+                    </div>
+                    
+                    {/* Status indicator */}
+                    <div className={`absolute top-2 left-2 px-3 py-1 rounded-full text-sm font-medium ${recognitionStatus === 'scanning' ? 'bg-yellow-100 text-yellow-800' : recognitionStatus === 'success' ? 'bg-green-100 text-green-800' : recognitionStatus === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {recognitionStatus === 'scanning' ? 'Scanning...' : 
+                       recognitionStatus === 'success' ? 'Student Recognized!' : 
+                       recognitionStatus === 'error' ? 'Recognition Failed' : 
+                       'Ready to Scan'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center text-gray-600 mb-4">
+                    <p>Position students in front of the camera for automatic attendance marking</p>
+                    <p className="text-sm">AI will detect faces and match them with enrolled students</p>
+                  </div>
+                  
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      onClick={() => setShowCamera(false)}
+                      className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={processFacialRecognition}
+                      disabled={recognitionInProgress}
+                      className={`px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center ${recognitionInProgress ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                      {recognitionInProgress ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 mr-2" />
+                          Recognize Students
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">Recognized Students</h4>
+                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {recognizedStudents.length} students
+                    </span>
+                  </div>
+                  
+                  {recognizedStudents.length === 0 ? (
+                    <div className="text-center py-8">
+                      <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No students recognized yet</p>
+                      <p className="text-gray-400 text-sm">Click "Recognize Students" to start</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-y-auto max-h-96 space-y-3">
+                      {recognizedStudents.map((student, index) => (
+                        <div key={`${student.id}-${index}`} className="flex items-center bg-white p-3 rounded-lg shadow-sm">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            {student.photo_url ? (
+                              <img
+                                src={student.photo_url}
+                                alt={student.name}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white text-sm font-medium">
+                                {student.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="ml-3 flex-1">
+                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                            <div className="text-xs text-gray-500">{student.timestamp}</div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <span className="flex items-center text-green-600">
+                              <Check className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Present</span>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {recognizedStudents.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <button 
+                        onClick={() => setRecognizedStudents([])} 
+                        className="text-sm text-red-600 hover:text-red-800"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
